@@ -1,0 +1,31 @@
+﻿<Window x:Class="CrackerZIPArchiveWithPassword.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CrackerZIPArchiveWithPassword"
+        mc:Ignorable="d"
+        Title="Cracker ZIP-archive with password" Height="214" Width="546.279" Closing="Window_Closing" Icon="extract_archive.ico" ResizeMode="NoResize">
+    <Grid Margin="0,0,2,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="184*"/>
+            <ColumnDefinition Width="333*"/>
+        </Grid.ColumnDefinitions>
+        <Menu x:Name="MainMenu" HorizontalAlignment="Left" Height="20" VerticalAlignment="Top" Width="536" Grid.ColumnSpan="2">
+            <MenuItem Header="File">
+                <MenuItem Name ="MenuOpen" Header="Open ZIP-archive with password" Click="MenuItemOpen_Click"/>
+                <MenuItem Name ="MenuSave" Header="Save state of search" Click="MenuItemSave_Click" IsEnabled="False"/>
+                <MenuItem Name ="MenuSaveAs" Header="Save state of search as ..." Click="MenuItemSaveAs_Click" IsEnabled="False"/>
+                <MenuItem Name ="MenuOpenState" Header="Load state of search" Click="MenuItemLoadState_Click"/>
+                <MenuItem Name="MenuExit" Header="Exit" Click="MenuItemExit_Click"/>
+            </MenuItem>
+        </Menu>
+        <Label x:Name="labelCurrPassword" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="109,147,0,0" Height="26" Width="182" Grid.ColumnSpan="2"/>
+        <Label x:Name="label1" Content="File: " HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,36,0,0" Visibility="Hidden"/>
+        <Label x:Name="labelFileName" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="32,36,0,0" Grid.ColumnSpan="2" Width="481"/>
+        <Label x:Name="label2" Content="Current password: " HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,147,0,0" Visibility="Hidden"/>
+        <Label x:Name="label3" Content="Elapsed time:" VerticalAlignment="Top" Margin="0,62,111,0" Visibility="Hidden"/>
+        <Label x:Name="labelElapsedTime" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="85,62,0,0" Width="96"/>
+
+    </Grid>
+</Window>
