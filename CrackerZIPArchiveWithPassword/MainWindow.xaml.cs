@@ -36,6 +36,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
         string ArchiveName = "";
         SaveFileDialog SaveDialogState;
         IAsyncResult asyncResult;
+        bool PasswordFound = false;
 
         public MainWindow()
         {
@@ -68,7 +69,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                 timer2.Tick += Timer2_Tick;
                 timer2.Interval = new TimeSpan(0, 0, 0, 0, 100);
                 timer2.Start();
-
+                
                 asyncResult = thread.BeginInvoke(OpenDialogZIPFile.FileName, Callback, null);
 
                 label1.Visibility = Visibility.Visible;
@@ -138,30 +139,34 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                     ArchiveName = OpenDialogZIPFile.FileName;
                 }
 
-                time = new TimeSpan(hours, minutes, seconds);
+                if(!string.IsNullOrEmpty(ArchiveName))
+                {
+                    time = new TimeSpan(hours, minutes, seconds);
 
-                cracker = new CreckerZIPPassword(password);
+                    cracker = new CreckerZIPPassword(password);
 
-                Func<string, string> thread = new Func<string, string>(cracker.GetPassword);
+                    Func<string, string> thread = new Func<string, string>(cracker.GetPassword);
 
-                timer = new DispatcherTimer();
-                timer.Tick += Timer_Tick;
-                timer.Interval = new TimeSpan(0, 0, 1);
-                timer.Start();
-                timer2 = new DispatcherTimer();
-                timer2.Tick += Timer2_Tick;
-                timer2.Interval = new TimeSpan(0, 0, 0, 0, 100);
-                timer2.Start();
+                    timer = new DispatcherTimer();
+                    timer.Tick += Timer_Tick;
+                    timer.Interval = new TimeSpan(0, 0, 1);
+                    timer.Start();
+                    timer2 = new DispatcherTimer();
+                    timer2.Tick += Timer2_Tick;
+                    timer2.Interval = new TimeSpan(0, 0, 0, 0, 100);
+                    timer2.Start();
 
-                asyncResult = thread.BeginInvoke(ArchiveName, Callback, null);
+                    asyncResult = thread.BeginInvoke(ArchiveName, Callback, null);
 
-                label1.Visibility = Visibility.Visible;
-                label2.Visibility = Visibility.Visible;
-                label3.Visibility = Visibility.Visible;
-                MenuOpen.IsEnabled = false;
-                MenuOpenState.IsEnabled = false;
-                MenuSave.IsEnabled = true;
-                MenuSaveAs.IsEnabled = true;
+                    label1.Visibility = Visibility.Visible;
+                    label2.Visibility = Visibility.Visible;
+                    label3.Visibility = Visibility.Visible;
+                    MenuOpen.IsEnabled = false;
+                    MenuOpenState.IsEnabled = false;
+                    MenuSave.IsEnabled = true;
+                    MenuSaveAs.IsEnabled = true;
+                }
+                
             }
         }
 
@@ -173,6 +178,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
             string s = func.EndInvoke(ar);
             Thread.Sleep(1100);
             timer.Stop();
+            PasswordFound = true;
             MessageBox.Show("Password: " + s);
         }
 
@@ -249,7 +255,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (cracker != null)
+            if (cracker != null && !PasswordFound)
             {
                 MessageBoxResult res = MessageBox.Show("Do you want save state of search", "Exiting", MessageBoxButton.YesNo);
                 if (res == MessageBoxResult.Yes)

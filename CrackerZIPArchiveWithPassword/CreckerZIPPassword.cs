@@ -34,6 +34,8 @@ namespace CrackerZIPArchiveWithPassword
                 }
             }
         }
+        public List<string> passwords = new List<string>(); // create a batch of passwords
+        public int noofpasswords = 1000; // this is to set a batch limit
 
         ZipArchive ZIPArchive;
         Stream stream;
@@ -55,20 +57,13 @@ namespace CrackerZIPArchiveWithPassword
             bool passwordIsFine = false;
             uint CRCOfEntry = 0;
             string nameOfEntryInArchive = "";
+
             
-            
+
             while (!passwordIsFine)
             {
-                try
-                {
-                    //first create a zip object with the necessary parameters
-                    ZIPArchive = ZipArchive.Open(pathOfZipArchive, currentPassword);
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show("File not found or you input wrong name of file");
-                    break;
-                }
+                //first create a zip object with the necessary parameters
+                ZIPArchive = ZipArchive.Open(pathOfZipArchive, currentPassword);
 
                 try
                 {
