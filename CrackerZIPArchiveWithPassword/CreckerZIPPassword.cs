@@ -3,19 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using System.Threading;
 using System.IO;
 using SharpCompress.Archive.Zip;
 using System.Windows;
-
+using System.Diagnostics;
 
 namespace CrackerZIPArchiveWithPassword
 {
     class CreckerZIPPassword
     {
         object LockObject = new object();
+        object LockObject2 = new object();
         public List<string> listOfFile = new List<string>();          // for deleting files after close programm
         private string currentPassword;
+        private string CorrectPassword;
         public string CurrentPassword
         {
             get
@@ -34,9 +36,27 @@ namespace CrackerZIPArchiveWithPassword
                 }
             }
         }
-        public List<string> passwords = new List<string>(); // create a batch of passwords
-        public int noofpasswords = 1000; // this is to set a batch limit
+        public int _noofthreads;
+        public int NoOfThreads
+        {
+            get
+            {
+                lock (LockObject2)
+                {
+                    return _noofthreads;
+                }
 
+            }
+            set
+            {
+                lock (LockObject2)
+                {
+                    _noofthreads = value;
+                }
+            }
+        }
+        public List<string> ListOfPasswords = new List<string>(); // create a batch of passwords
+        public int passwords_per_batch = 500; // this is to set a batch limit
         ZipArchive ZIPArchive;
         Stream stream;
         FileStream writer;
@@ -45,97 +65,247 @@ namespace CrackerZIPArchiveWithPassword
         public CreckerZIPPassword()
         {
             currentPassword = "0";
+            CorrectPassword = "";
         }
 
         public CreckerZIPPassword(string currentPassword)
         {
             this.currentPassword = currentPassword;
+            this.CorrectPassword = null;
         }
 
-        public string GetPassword(string pathOfZipArchive)
+        public string GetPassword(string pathOfZipArchive,bool IsMultiThreading)
         {
             bool passwordIsFine = false;
             uint CRCOfEntry = 0;
             string nameOfEntryInArchive = "";
 
-            
-
-            while (!passwordIsFine)
+            if (!IsMultiThreading)
             {
-                //first create a zip object with the necessary parameters
-                ZIPArchive = ZipArchive.Open(pathOfZipArchive, currentPassword);
-
-                try
+                #region SingleThread
+                while (!passwordIsFine)
                 {
-                    //now try to read each entry of this zip object, if password protected, reading these entries will throw an exception
-                    foreach (var entry in ZIPArchive.Entries)
+                    //first create a zip object with the necessary parameters
+                    ZIPArchive = ZipArchive.Open(pathOfZipArchive, currentPassword);
+                    NoOfThreads = Process.GetCurrentProcess().Threads.Count;
+                    try
                     {
-                        stream = entry.OpenEntryStream();//will throw an exception if password is not correct
-                        //*TODO* The next logic was created by the original developer, will need to review
-                        //if password is correct then extract each item of the archive and get its CRC value
-                        // this CRC value will be cross checked later whilst re-zipping the archive
-                        nameOfEntryInArchive = entry.FilePath;
-                        if (!listOfFile.Contains(entry.FilePath))    
+                        //now try to read each entry of this zip object, if password protected, reading these entries will throw an exception
+                        foreach (var entry in ZIPArchive.Entries)
                         {
-                            listOfFile.Add(entry.FilePath); 
-                        }        
-                        writer = new FileStream(nameOfEntryInArchive, FileMode.Create, FileAccess.Write);
-                        entry.WriteTo(writer);
-                        CRCOfEntry = entry.Crc;
+                            stream = entry.OpenEntryStream();//will throw an exception if password is not correct
+                             /*
+                              * The next logic was created by the original developer, will need to review
+                              * if password is correct then extract each item of the archive and get its CRC value
+                              * this CRC value will be cross checked later whilst re-zipping the archive
+                              * the CRC check is because at times .OpenEntryStream() method does not throw a password exception.
+                              */                               
+                            nameOfEntryInArchive = entry.FilePath;
+                            if (!listOfFile.Contains(entry.FilePath))
+                            {
+                                listOfFile.Add(entry.FilePath);
+                            }
+                            writer = new FileStream(nameOfEntryInArchive, FileMode.Create, FileAccess.Write);
+                            entry.WriteTo(writer);
+                            CRCOfEntry = entry.Crc;
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    if (ZIPArchive != null)
+                    catch (Exception ex)
                     {
-                        ZIPArchive.Dispose();
-                    }
-                    if (stream != null)
-                    {
-                        stream.Close();
-                    }
-                    if (writer != null)
-                    {
-                        writer.Close();
-                    }
-                    
-                    IncrementPassword(CurrentPassword.Length - 1);
-                    continue;
-                }
+                        if (ZIPArchive != null)
+                        {
+                            ZIPArchive.Dispose();
+                        }
+                        if (stream != null)
+                        {
+                            stream.Close();
+                        }
+                        if (writer != null)
+                        {
+                            writer.Close();
+                        }
 
-                writer.Close();
-                uint destCRC = 0;
-                //a new archive is created and the extracted files are zipped back
-                using (var newArchive = ZipArchive.Create())
-                {
-                    newArchive.AddEntry(nameOfEntryInArchive, new FileInfo(nameOfEntryInArchive));
-
-                    using (Stream newStream = File.Create("Destination.zip"))
-                    {
-                        newArchive.SaveTo(newStream, SharpCompress.Common.CompressionType.LZMA);
+                        IncrementPassword(CurrentPassword.Length - 1);
+                        continue;
                     }
 
-                    //re-opening the new archive and check each item for its CRC check
-                    ZipArchive z = ZipArchive.Open("Destination.zip");
-                   
-                    foreach (var item in z.Entries)
+                    writer.Close();
+                    uint destCRC = 0;
+                    //a new archive is created and the extracted files are zipped back
+                    using (var newArchive = ZipArchive.Create())
                     {
-                        destCRC = item.Crc;
-                    }
-                    z.Dispose();
-                }
+                        newArchive.AddEntry(nameOfEntryInArchive, new FileInfo(nameOfEntryInArchive));
 
-                if (CRCOfEntry != destCRC)
-                {
-                    countAtemptsCompareCRC++;
-                    IncrementPassword(CurrentPassword.Length - 1);
-                   
-                    continue;
+                        using (Stream newStream = File.Create("Destination.zip"))
+                        {
+                            newArchive.SaveTo(newStream, SharpCompress.Common.CompressionType.LZMA);
+                        }
+
+                        //re-opening the new archive and check each item for its CRC check
+                        ZipArchive z = ZipArchive.Open("Destination.zip");
+
+                        foreach (var item in z.Entries)
+                        {
+                            destCRC = item.Crc;
+                        }
+                        z.Dispose();
+                    }
+
+                    if (CRCOfEntry != destCRC)
+                    {
+                        countAtemptsCompareCRC++;
+                        IncrementPassword(CurrentPassword.Length - 1);
+
+                        continue;
+                    }
+                    //MessageBox.Show("Password: " + CurrentPassword);
+                    passwordIsFine = true;
                 }
-                //MessageBox.Show("Password: " + CurrentPassword);
-                passwordIsFine = true;
+                #endregion
+                return CurrentPassword;
             }
-            return CurrentPassword;
+            else
+            {
+                #region MultipleThreads
+                bool PasswordFound = false;
+
+                while (!PasswordFound)
+                {
+                    //the password list when accessed the first time will have zero items, hence will start the generation from 'currentpassword'
+                    //however even after iterating through all the items in this list, if the password is not found, then we must populate the next batch
+                    //to populate the next batch, we must remember the last item of the password list.
+                    
+                    //if the list has items, then it has completed atleast one batch
+                    if(ListOfPasswords.Count>0)
+                    {
+                        //set the last item of the list as the currentpassword so that the subsequent batches can be generated appropriately
+                        CurrentPassword = ListOfPasswords[passwords_per_batch - 1];
+                    }
+                    PopulatePasswords();
+                    Parallel.ForEach(ListOfPasswords,new ParallelOptions { MaxDegreeOfParallelism=50 }, (password, state) =>
+                    {
+                        NoOfThreads = Process.GetCurrentProcess().Threads.Count;
+                        CurrentPassword = password;
+                        List<string> _listOfFile = new List<string>();
+                        uint _CRCOfEntry = 0;
+                        string _nameOfEntryInArchive = null;
+                        string _tempfolder = @"C:\temp\CrackerZIPPassword\" + password + @"\";
+                        using (ZipArchive _ziparchive = ZipArchive.Open(pathOfZipArchive, password))
+                        {
+                            if (_ziparchive.Entries.Count > 0)
+                            {
+                                int entrycount = 0;
+                                foreach (var entry in _ziparchive.Entries)
+                                {
+                                    entrycount++;
+                                    if (!(entrycount > 1)) //only check the first entry
+                                    {
+                                        try
+                                        {
+                                            Stream _stream = entry.OpenEntryStream(); //sometimes throws a password did not match exception, sometimes it doesn't
+                                            _nameOfEntryInArchive = entry.FilePath;
+
+                                            Directory.CreateDirectory(_tempfolder);
+                                            if (!_listOfFile.Contains(_tempfolder + _nameOfEntryInArchive))
+                                            {
+                                                _listOfFile.Add(_tempfolder + _nameOfEntryInArchive);
+                                            }
+                                            try
+                                            {
+                                                using (FileStream _writer = new FileStream(_tempfolder + _nameOfEntryInArchive, FileMode.Create, FileAccess.Write))
+                                                {
+                                                    entry.WriteTo(_writer); // will throw a 'Bad state (oversubscribed dynamic bit lengths tree)' error if password doesnt match or file corrupted.
+                                                    _CRCOfEntry = entry.Crc;
+                                                }
+
+                                                uint _destCRC = 0;
+                                                //a new archive is created and the extracted files are zipped back
+                                                using (var newArchive = ZipArchive.Create())
+                                                {
+                                                    newArchive.AddEntry(_tempfolder + _nameOfEntryInArchive, new FileInfo(_tempfolder + _nameOfEntryInArchive));
+
+                                                    using (Stream newStream = File.Create(_tempfolder + "Destination.zip"))
+                                                    {
+                                                        newArchive.SaveTo(newStream, SharpCompress.Common.CompressionType.LZMA);
+                                                    }
+
+                                                    //re-opening the new archive and check each item for its CRC check
+                                                    ZipArchive z = ZipArchive.Open(_tempfolder + "Destination.zip");
+
+                                                    foreach (var item in z.Entries)
+                                                    {
+                                                        _destCRC = item.Crc;
+                                                    }
+                                                    z.Dispose();
+                                                }
+
+                                                if (_CRCOfEntry != _destCRC)
+                                                {
+                                                    DeleteFilesAndFolders(_listOfFile);
+                                                    countAtemptsCompareCRC++;
+                                                }
+                                                else
+                                                {
+                                                    DeleteFilesAndFolders(_listOfFile);
+                                                    CorrectPassword = password;
+                                                    PasswordFound = true;
+                                                    state.Break();
+                                                }
+
+
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                string _msg1 = "Bad state";
+                                                string errormsg = ex.Message;
+
+                                                DeleteFilesAndFolders(_listOfFile);
+                                                if (!errormsg.Contains(_msg1))
+                                                {
+                                                    CorrectPassword = errormsg;
+                                                    PasswordFound = true;
+                                                    state.Break();
+                                                }
+                                            }
+
+
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            string _msg1 = "The password did not match.";
+                                            string errormsg = ex.Message;
+
+                                            if (!errormsg.Equals(_msg1))
+                                            {
+                                                CorrectPassword = errormsg;
+                                                PasswordFound = true;
+                                                state.Break();
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                }
+
+                            }
+
+                        }
+
+
+                        //if (password.Equals("f7"))
+                        //{
+                        //    CorrectPassword = password;
+                        //    PasswordFound = true;
+                        //    state.Break();
+                        //}
+
+                    });
+                }
+
+                #endregion
+
+                return CorrectPassword;
+            }
+            
         }
 
         private void IncrementPassword(int position)
@@ -178,6 +348,29 @@ namespace CrackerZIPArchiveWithPassword
             string string1 = CurrentPassword.Insert(position, symbol.ToString());
             string string2 = string1.Remove(position + 1, 1);
             CurrentPassword = string2;
+        }
+
+        private void PopulatePasswords()
+        {
+            ListOfPasswords.Clear();
+            for(int i=0;i<passwords_per_batch;i++)
+            {
+                ListOfPasswords.Add(CurrentPassword);
+                IncrementPassword(CurrentPassword.Length - 1);
+            }
+        }
+
+        private void DeleteFilesAndFolders(List<string> _list)
+        {
+            //delete files
+            foreach (string s in _list)
+            {
+                if (File.Exists(s))
+                    File.Delete(s);
+                
+                string _dir = Path.GetDirectoryName(s);
+                Directory.Delete(_dir,true);
+            }
         }
     }
 }

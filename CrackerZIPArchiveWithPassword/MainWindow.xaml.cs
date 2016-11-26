@@ -47,18 +47,17 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
         {
             OpenDialogZIPFile = new OpenFileDialog();
 
-            OpenDialogZIPFile.Filter = "ZIP-archive Files|*.zip";
+            OpenDialogZIPFile.Filter = "Compressed Files|*.zip;*.7z";
             OpenDialogZIPFile.ShowDialog();
             labelFileName.Content = OpenDialogZIPFile.FileName;
             ArchiveName = OpenDialogZIPFile.FileName;
-
             if (!ArchiveName.Equals(""))
             {
                 time = new TimeSpan(0, 0, 0);
 
                 cracker = new CreckerZIPPassword();
 
-                Func<string, string> thread = new Func<string, string>(cracker.GetPassword);
+                Func<string,bool, string> thread = new Func<string,bool, string>(cracker.GetPassword);
 
                 timer = new DispatcherTimer();
                 timer.Tick += Timer_Tick;
@@ -70,11 +69,17 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                 timer2.Interval = new TimeSpan(0, 0, 0, 0, 100);
                 timer2.Start();
                 
-                asyncResult = thread.BeginInvoke(OpenDialogZIPFile.FileName, Callback, null);
+                asyncResult = thread.BeginInvoke(OpenDialogZIPFile.FileName,this.Threading.IsChecked, Callback, null);
 
                 label1.Visibility = Visibility.Visible;
                 label2.Visibility = Visibility.Visible;
                 label3.Visibility = Visibility.Visible;
+                label4.Visibility = Visibility.Visible;
+                labelCurrPassword.Visibility = Visibility.Visible;
+                this.labelCorrPassword.Content = "";
+                this.labelCorrPassword.Visibility = Visibility.Hidden;
+                this.label_password.Visibility = Visibility.Hidden;
+
                 MenuOpen.IsEnabled = false;
                 MenuOpenState.IsEnabled = false;
                 MenuSave.IsEnabled = true;
@@ -87,7 +92,6 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
             OpenFileDialog passwordFile = new OpenFileDialog();
             passwordFile.Filter = "Password files|*.psw";
             passwordFile.ShowDialog();
-
             if (!passwordFile.FileName.Equals(""))
             {
                 SaveDialogState = new SaveFileDialog(); // for quick save
@@ -133,7 +137,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
 
                     OpenDialogZIPFile = new OpenFileDialog();
 
-                    OpenDialogZIPFile.Filter = "ZIP-archive Files|*.zip";
+                    OpenDialogZIPFile.Filter = "Compressed Files|*.zip;*.7z";
                     OpenDialogZIPFile.ShowDialog();
                     labelFileName.Content = OpenDialogZIPFile.FileName;
                     ArchiveName = OpenDialogZIPFile.FileName;
@@ -145,7 +149,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
 
                     cracker = new CreckerZIPPassword(password);
 
-                    Func<string, string> thread = new Func<string, string>(cracker.GetPassword);
+                    Func<string,bool, string> thread = new Func<string,bool, string>(cracker.GetPassword);
 
                     timer = new DispatcherTimer();
                     timer.Tick += Timer_Tick;
@@ -156,11 +160,17 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                     timer2.Interval = new TimeSpan(0, 0, 0, 0, 100);
                     timer2.Start();
 
-                    asyncResult = thread.BeginInvoke(ArchiveName, Callback, null);
+                    asyncResult = thread.BeginInvoke(ArchiveName,this.Threading.IsChecked, Callback, null);
 
                     label1.Visibility = Visibility.Visible;
                     label2.Visibility = Visibility.Visible;
                     label3.Visibility = Visibility.Visible;
+                    label4.Visibility = Visibility.Visible;
+                    labelCurrPassword.Visibility = Visibility.Visible;
+                    this.labelCorrPassword.Content = "";
+                    this.labelCorrPassword.Visibility = Visibility.Hidden;
+                    this.label_password.Visibility = Visibility.Hidden;
+
                     MenuOpen.IsEnabled = false;
                     MenuOpenState.IsEnabled = false;
                     MenuSave.IsEnabled = true;
@@ -173,13 +183,23 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
         private void Callback(IAsyncResult ar)
         {
             AsyncResult AR = ar as AsyncResult;
-            Func<string, string> func = AR.AsyncDelegate as Func<string, string>;
+            Func<string, bool, string> func = AR.AsyncDelegate as Func<string, bool, string>;
 
             string s = func.EndInvoke(ar);
             Thread.Sleep(1100);
             timer.Stop();
             PasswordFound = true;
-            MessageBox.Show("Password: " + s);
+            this.Dispatcher.Invoke(() =>
+            {
+                label2.Visibility = Visibility.Hidden;
+                label_password.Visibility = Visibility.Visible;
+                labelCurrPassword.Visibility = Visibility.Hidden;
+                labelCorrPassword.Visibility = Visibility.Visible;
+                labelCorrPassword.Content = s + "   (copied to clipboard)";
+                Clipboard.SetText(s);
+            });
+            
+            //MessageBox.Show("Password: " + s);
         }
 
         private void MenuItemSave_Click(object sender, RoutedEventArgs e)
@@ -241,6 +261,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
         {
             time = time.Add(new TimeSpan(0, 0, 1));
             labelElapsedTime.Content = time.Hours.ToString() + "h: " + time.Minutes.ToString() + "m: " + time.Seconds.ToString() + "s";
+            labelActiveThreads.Content = cracker.NoOfThreads;
         }
 
         private void Timer2_Tick(object sender, EventArgs e)
@@ -262,20 +283,20 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                 {
                     MenuItemSave_Click(null, null);
                 }
-
-                try
+            }
+            //delete files created
+            try
+            {
+                foreach (var item in cracker.listOfFile)
                 {
-                    foreach (var item in cracker.listOfFile)
-                    {
-                        FileInfo Fi = new FileInfo(item);
-                        Fi.Delete();
-                    }
-                    FileInfo F = new FileInfo("Destination.zip");
-                    F.Delete();
+                    FileInfo Fi = new FileInfo(item);
+                    Fi.Delete();
                 }
-                catch (Exception)
-                {
-                }
+                FileInfo F = new FileInfo("Destination.zip");
+                F.Delete();
+            }
+            catch (Exception)
+            {
             }
         }
 
