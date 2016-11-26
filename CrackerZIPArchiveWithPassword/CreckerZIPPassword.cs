@@ -35,7 +35,6 @@ namespace CrackerZIPArchiveWithPassword
             }
         }
 
-
         ZipArchive ZIPArchive;
         Stream stream;
         FileStream writer;
@@ -53,14 +52,16 @@ namespace CrackerZIPArchiveWithPassword
 
         public string GetPassword(string pathOfZipArchive)
         {
-            bool passwordIsFind = false;
+            bool passwordIsFine = false;
             uint CRCOfEntry = 0;
-            string nameOfEntireInArchive = "";
+            string nameOfEntryInArchive = "";
             
-            while (!passwordIsFind)
+            
+            while (!passwordIsFine)
             {
                 try
                 {
+                    //first create a zip object with the necessary parameters
                     ZIPArchive = ZipArchive.Open(pathOfZipArchive, currentPassword);
                 }
                 catch (Exception e)
@@ -71,17 +72,21 @@ namespace CrackerZIPArchiveWithPassword
 
                 try
                 {
-                    foreach (var entire in ZIPArchive.Entries)
+                    //now try to read each entry of this zip object, if password protected, reading these entries will throw an exception
+                    foreach (var entry in ZIPArchive.Entries)
                     {
-                        stream = entire.OpenEntryStream();
-                        nameOfEntireInArchive = entire.FilePath;
-                        if (!listOfFile.Contains(entire.FilePath))    
+                        stream = entry.OpenEntryStream();//will throw an exception if password is not correct
+                        //*TODO* The next logic was created by the original developer, will need to review
+                        //if password is correct then extract each item of the archive and get its CRC value
+                        // this CRC value will be cross checked later whilst re-zipping the archive
+                        nameOfEntryInArchive = entry.FilePath;
+                        if (!listOfFile.Contains(entry.FilePath))    
                         {
-                            listOfFile.Add(entire.FilePath); 
+                            listOfFile.Add(entry.FilePath); 
                         }        
-                        writer = new FileStream(nameOfEntireInArchive, FileMode.Create, FileAccess.Write);
-                        entire.WriteTo(writer);
-                        CRCOfEntry = entire.Crc;
+                        writer = new FileStream(nameOfEntryInArchive, FileMode.Create, FileAccess.Write);
+                        entry.WriteTo(writer);
+                        CRCOfEntry = entry.Crc;
                     }
                 }
                 catch (Exception ex)
@@ -105,15 +110,17 @@ namespace CrackerZIPArchiveWithPassword
 
                 writer.Close();
                 uint destCRC = 0;
+                //a new archive is created and the extracted files are zipped back
                 using (var newArchive = ZipArchive.Create())
                 {
-                    newArchive.AddEntry(nameOfEntireInArchive, new FileInfo(nameOfEntireInArchive));
+                    newArchive.AddEntry(nameOfEntryInArchive, new FileInfo(nameOfEntryInArchive));
 
                     using (Stream newStream = File.Create("Destination.zip"))
                     {
                         newArchive.SaveTo(newStream, SharpCompress.Common.CompressionType.LZMA);
                     }
 
+                    //re-opening the new archive and check each item for its CRC check
                     ZipArchive z = ZipArchive.Open("Destination.zip");
                    
                     foreach (var item in z.Entries)
@@ -131,7 +138,7 @@ namespace CrackerZIPArchiveWithPassword
                     continue;
                 }
                 //MessageBox.Show("Password: " + CurrentPassword);
-                passwordIsFind = true;
+                passwordIsFine = true;
             }
             return CurrentPassword;
         }
