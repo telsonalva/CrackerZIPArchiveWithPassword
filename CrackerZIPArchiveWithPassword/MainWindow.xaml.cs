@@ -19,6 +19,7 @@ using System.Windows.Threading;             // Timer
 using System.Xml;
 using System.Threading;
 using System.IO;
+using System.Reflection;
 
 namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Enabled labels
 {
@@ -75,6 +76,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                 label2.Visibility = Visibility.Visible;
                 label3.Visibility = Visibility.Visible;
                 label4.Visibility = Visibility.Visible;
+                label5.Visibility = Visibility.Visible;
                 labelCurrPassword.Visibility = Visibility.Visible;
                 this.labelCorrPassword.Content = "";
                 this.labelCorrPassword.Visibility = Visibility.Hidden;
@@ -166,6 +168,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
                     label2.Visibility = Visibility.Visible;
                     label3.Visibility = Visibility.Visible;
                     label4.Visibility = Visibility.Visible;
+                    label5.Visibility = Visibility.Visible;
                     labelCurrPassword.Visibility = Visibility.Visible;
                     this.labelCorrPassword.Content = "";
                     this.labelCorrPassword.Visibility = Visibility.Hidden;
@@ -262,6 +265,7 @@ namespace CrackerZIPArchiveWithPassword  //TODO: delete files, more entires, Ena
             time = time.Add(new TimeSpan(0, 0, 1));
             labelElapsedTime.Content = time.Hours.ToString() + "h: " + time.Minutes.ToString() + "m: " + time.Seconds.ToString() + "s";
             labelActiveThreads.Content = cracker.NoOfThreads;
+            labelNoOfPasswords.Content = cracker.NoOfPasswords.ToString();
         }
 
         private void Timer2_Tick(object sender, EventArgs e)

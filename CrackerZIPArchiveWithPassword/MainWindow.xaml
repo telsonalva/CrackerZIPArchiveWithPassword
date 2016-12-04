@@ -20,7 +20,7 @@
                 <MenuItem Name="MenuExit" Header="Exit" Click="MenuItemExit_Click"/>
             </MenuItem>
             <MenuItem Header="Options">
-                <MenuItem Name ="Threading" Header="Multi-Threading" IsCheckable="True"/>
+                <MenuItem Name ="Threading" Header="Multi-Threading" IsCheckable="True" IsChecked="True"/>
             </MenuItem>
         </Menu>
         <Label x:Name="labelCurrPassword" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="109,147,0,0" Height="26" Width="182" Grid.ColumnSpan="2"/>
@@ -29,9 +29,13 @@
         <Label x:Name="label2" Content="Current password: " HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,147,0,0" Visibility="Hidden"/>
         <Label x:Name="label3" Content="Elapsed time:" VerticalAlignment="Top" Margin="0,62,111,0" Visibility="Hidden"/>
         <Label x:Name="labelElapsedTime" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="85,62,0,0" Width="96"/>
+        
         <Label x:Name="label4" Content="Active Threads:" VerticalAlignment="Top" Margin="0,88,100.2,0" Visibility="Hidden"/>
         <Label x:Name="labelActiveThreads" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="91,88,0,0" Width="90"/>
 
+        <Label x:Name="label5" Content="Passwords :" VerticalAlignment="Top" Margin="0,114,100.2,0" Visibility="Hidden"/>
+        <Label x:Name="labelNoOfPasswords" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="91,114,0,0" Width="90"/>
+        
         <Label x:Name="label_password" Content="Correct password: " Foreground="Green" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,147,0,0" Visibility="Hidden"/>
         <Label x:Name="labelCorrPassword" Content="" Foreground="Green" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="109,147,0,0" Height="26" Width="auto" Grid.ColumnSpan="2"/>
 
